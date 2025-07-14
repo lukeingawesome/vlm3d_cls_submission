@@ -71,6 +71,8 @@ DEFAULT_LABELS = [
     "Interlobular septal thickening"
 ]
 
+
+
 # ───────────────────────────────────────────────────────
 def _hu_window_to_unit(volume: np.ndarray, center: float, width: float) -> np.ndarray:
     """Clip a HU volume to the given window and scale to [0,1]."""
@@ -131,11 +133,11 @@ def find_volumes_in_directory(input_dir: str) -> List[str]:
     input_path = Path(input_dir)
     volume_files = []
     
-    # Look for supported file types
+    # Look for supported file types recursively
     for ext in SUPPORTED_COMPRESSED_EXTS + SUPPORTED_RAW_EXTS:
-        volume_files.extend(input_path.glob(f"*{ext}"))
+        volume_files.extend(input_path.rglob(f"*{ext}"))
     
-    logging.info(f"Found {len(volume_files)} volumes in {input_dir}")
+    logging.info(f"Found {len(volume_files)} volumes under {input_dir}")
     return sorted([str(f) for f in volume_files])
 
 class CTDataset(Dataset):
@@ -272,8 +274,8 @@ def main():
     parser.add_argument("--checkpoint", required=True, help="Path to model checkpoint")
     parser.add_argument("--input_dir", required=True, help="Directory containing input volumes")
     parser.add_argument("--output_path", required=True, help="Output JSON file path")
-    parser.add_argument("--device", default="auto", help="Device to use (auto-detects CUDA if available, use 'cpu' to force CPU)")
-    parser.add_argument("--batch_size", type=int, default=1, help="Batch size")
+    parser.add_argument("--device", default="cuda", help="Device to use (auto-detects CUDA if available, use 'cpu' to force CPU)")
+    parser.add_argument("--batch_size", type=int, default=16, help="Batch size")
     parser.add_argument("--three_channel", action="store_true", help="Use three-channel windowing")
     parser.add_argument("--log_level", default="INFO", help="Logging level")
     
@@ -301,6 +303,12 @@ def main():
     volume_paths = find_volumes_in_directory(args.input_dir)
     if not volume_paths:
         logging.error(f"No volumes found in {args.input_dir}")
+        # Create empty results file instead of failing (useful for testing)
+        logging.warning(f"No volumes found in {args.input_dir}; writing empty results.json")
+        output_path = Path(args.output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, "w") as f:
+            json.dump({"predictions": []}, f)
         return
     
     # Create dataset

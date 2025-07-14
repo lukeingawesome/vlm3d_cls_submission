@@ -4,10 +4,13 @@ SCRIPTPATH="$( cd "$(dirname "$0")" && pwd )"
 
 ./build.sh
 
-VOLUME_SUFFIX=$(head -c 16 /dev/urandom | md5sum | cut -d' ' -f1)
+
+VOLUME_SUFFIX=$(dd if=/dev/urandom bs=32 count=1 | md5sum | cut --delimiter=' ' --fields=1)
+# Maximum is currently 30g, configurable in your algorithm image settings on grand challenge
 MEM_LIMIT="30g"
 
 docker volume create ctlipro-output-$VOLUME_SUFFIX
+
 
 docker run --rm \
         --gpus all \
@@ -21,6 +24,7 @@ docker run --rm \
         -v "$SCRIPTPATH/test/":/input/ \
         -v ctlipro-output-$VOLUME_SUFFIX:/output/ \
         ctlipro
+
 
 # Save results to host for debugging
 mkdir -p "$SCRIPTPATH/debug_output"
