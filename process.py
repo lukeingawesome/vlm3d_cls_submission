@@ -11,13 +11,13 @@ from torch.utils.data import DataLoader, Dataset
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 import SimpleITK as sitk
-
+import shutil
 # Local imports
 ROOT = Path(__file__).resolve().parent
 sys.path.append(str(ROOT / "training"))
 from training.ct_transform import get_val_transform
 from merlin import Merlin
-
+import os
 # ---------------------------------------------------------------------------
 #  CT on‑the‑fly pre‑processing (same settings you used for offline *.npz)
 # ---------------------------------------------------------------------------
@@ -253,13 +253,10 @@ def process_volumes(model, loader, device, labels):
         
         # Process each volume in the batch
         for i, filename in enumerate(filenames):
-            prob_dict = {}
-            for j, label in enumerate(labels):
-                prob_dict[label] = float(probs[i, j])
-            
             predictions.append({
                 "input_image_name": filename,
-                "scores": prob_dict
+                "probabilities": {label: float(probs[i, j])
+                                  for j, label in enumerate(labels)}
             })
             
         logging.info(f"Processed batch {batch_idx + 1}, volumes: {len(filenames)}")
@@ -330,7 +327,7 @@ def main():
     output = {
         "name": "Generated probabilities",
         "type": "Abnormality Classification",
-        "version": {"minor": 0.1},
+        "version": {"major": 1, "minor": 0},
         "predictions": predictions
     }
     
@@ -348,6 +345,10 @@ def main():
     logging.info(f"Processed {len(predictions)} volumes in {processing_time:.2f} seconds")
     logging.info(f"Average time per volume: {processing_time/len(predictions):.2f} seconds")
     logging.info(f"Saved predictions to {output_path}")
+    try:
+        shutil.copy(output_path, "/opt/app/models/results.json")
+    except Exception as e:
+        logging.error(f"Failed to copy results.json to /opt/app/models/results.json: {e}")
 
 if __name__ == "__main__":
     main() 

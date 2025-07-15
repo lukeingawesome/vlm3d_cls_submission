@@ -50,4 +50,4 @@ COPY --chown=user:user process.py /opt/app/
 RUN chmod +x /opt/app/process.py
 
 # Grand Challenge entrypoint - generates reports from /input/ to /output/results.json
-ENTRYPOINT ["python3", "/opt/app/process.py", "--checkpoint", "/opt/app/models/epoch_34.pth", "--input_dir", "/input/", "--output_path", "/output/results.json"]
+ENTRYPOINT ["python3", "/opt/app/process.py", "--checkpoint", "/opt/app/models/final.pth", "--input_dir", "/input/", "--output_path", "/output/results.json"]
